@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aesthetic Monochrome Timer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #0a0a0a;
+            color: #ffffff;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Controles */
+        .controls {
+            position: absolute;
+            top: 40px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 10px 20px;
+            border-radius: 100px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 100;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .controls.running {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+
+        .input-box {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .input-box label {
+            font-size: 11px;
+            color: #555;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .controls input {
+            width: 46px;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 800;
+            text-align: center;
+            outline: none;
+            border-bottom: 2px solid #333;
+            transition: border-color 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .controls input:focus {
+            border-color: #fff;
+        }
+
+        .controls input:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn {
+            background: #ffffff;
+            color: #000000;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 100px;
+            font-weight: 900;
+            font-size: 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn:hover {
+            background: #e0e0e0;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-reset {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .btn-reset:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Relógio */
+        .clock {
+            display: flex;
+            gap: clamp(6px, 1.2vw, 20px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .unit-group {
+            display: flex;
+            position: relative;
+            background: #161618;
+            padding: clamp(8px, 1.2vw, 16px);
+            border-radius: clamp(16px, 2vw, 28px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255,255,255,0.03);
+            border: 1px solid #222225;
+            gap: clamp(2px, 0.5vw, 6px);
+        }
+
+        /* Separadores */
+        .separator {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: -20px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #333;
+            border-radius: 50%;
+            animation: dotPulse 1s ease-in-out infinite;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: 0.5s;
+        }
+
+        @keyframes dotPulse {
+            0%, 100% { opacity: 0.3; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+
+        /* ===== FLIP CARD CORRIGIDO ===== */
+        .flip-card {
+            position: relative;
+            width: clamp(70px, 11vw, 150px);
+            height: clamp(100px, 16vw, 220px);
+            background: #1c1c1f;
+            border-radius: clamp(8px, 1.2vw, 16px);
+            perspective: 600px;
+            overflow: hidden;
+            box-shadow: inset 0 -2px 6px rgba(0,0,0,0.4);
+        }
+
+        /* Linha central da dobradiça */
+        .flip-card::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #0a0a0a;
+            z-index: 10;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.04);
+        }
+
+        /* Metades base (estáticas) */
+        .top, .bottom {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            overflow: hidden;
+            background: #1c1c1f;
+        }
+
+        .top {
+            top: 0;
+            border-radius: clamp(8px, 1.2vw, 16px) clamp(8px, 1.2vw, 16px) 0 0;
+            border-bottom: 1px solid rgba(0,0,0,0.4);
+        }
+
+        .bottom {
+            bottom: 0;
+            border-radius: 0 0 clamp(8px, 1.2vw, 16px) clamp(8px, 1.2vw, 16px);
+            border-top: 1px solid rgba(255,255,255,0.02);
+        }
+
+        /* 
+           Técnica crucial: line-height = altura TOTAL do card.
+           Assim o número é renderizado completo e cada metade 
+           mostra apenas a porção visível via overflow:hidden.
+        */
+        .top span, .bottom span {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: clamp(80px, 13vw, 185px);
+            font-weight: 900;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            line-height: clamp(100px, 16vw, 220px); /* = altura total do card */
+        }
+
+        /* Metade superior: topo do número alinhado ao topo do card */
+        .top span {
+            top: 0;
+            transform: translateY(0);
+        }
+
+        /* Metade inferior: topo do número puxado para cima em 100% da metade */
+        .bottom span {
+            top: 0;
+            transform: translateY(-50%); /* -50% da altura total = -100% da metade */
+        }
+
+        /* ===== FOLHAS DE ANIMAÇÃO ===== */
+        .leaf-top, .leaf-bottom {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            overflow: hidden;
+            background: #1c1c1f;
+            backface-visibility: hidden;
+        }
+
+        .leaf-top {
+            top: 0;
+            border-radius: clamp(8px, 1.2vw, 16px) clamp(8px, 1.2vw, 16px) 0 0;
+            border-bottom: 1px solid rgba(0,0,0,0.4);
+            transform-origin: bottom;
+            z-index: 5;
+            animation: flipTop 0.35s ease-in forwards;
+        }
+
+        .leaf-bottom {
+            bottom: 0;
+            border-radius: 0 0 clamp(8px, 1.2vw, 16px) clamp(8px, 1.2vw, 16px);
+            border-top: 1px solid rgba(255,255,255,0.02);
+            transform-origin: top;
+            z-index: 4;
+            animation: flipBottom 0.35s ease-out 0.35s forwards;
+            transform: rotateX(90deg);
+        }
+
+        .leaf-top span, .leaf-bottom span {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: clamp(80px, 13vw, 185px);
+            font-weight: 900;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            line-height: clamp(100px, 16vw, 220px);
+        }
+
+        .leaf-top span {
+            top: 0;
+            transform: translateY(0);
+        }
+
+        .leaf-bottom span {
+            top: 0;
+            transform: translateY(-50%);
+        }
+
+        @keyframes flipTop {
+            0% { transform: rotateX(0deg); }
+            100% { transform: rotateX(-90deg); }
+        }
+
+        @keyframes flipBottom {
+            0% { transform: rotateX(90deg); }
+            100% { transform: rotateX(0deg); }
+        }
+
+        /* Rótulos */
+        .label {
+            position: absolute;
+            bottom: -32px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #444;
+            font-weight: 800;
+        }
+
+        /* Finalizado */
+        .clock.finished .flip-card {
+            animation: finishedGlow 0.8s ease-in-out infinite alternate;
+        }
+
+        .clock.finished .label {
+            animation: labelPulse 0.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes finishedGlow {
+            0% { box-shadow: inset 0 -2px 6px rgba(0,0,0,0.4), 0 0 0 rgba(255,255,255,0); }
+            100% { box-shadow: inset 0 -2px 6px rgba(0,0,0,0.4), 0 0 40px rgba(255,255,255,0.06); }
+        }
+
+        @keyframes labelPulse {
+            0% { color: #444; }
+            100% { color: #888; }
+        }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            .controls {
+                top: 20px;
+                padding: 8px 14px;
+                gap: 10px;
+            }
+            .separator {
+                gap: 10px;
+                margin-top: -10px;
+            }
+            .dot {
+                width: 6px;
+                height: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls" id="controls">
+        <div class="input-box">
+            <label>H</label>
+            <input type="number" id="in-h" min="0" max="99" value="0">
+        </div>
+        <div class="input-box">
+            <label>M</label>
+            <input type="number" id="in-m" min="0" max="59" value="0">
+        </div>
+        <div class="input-box">
+            <label>S</label>
+            <input type="number" id="in-s" min="0" max="59" value="10">
+        </div>
+        <button type="button" class="btn" id="btn-start">Iniciar</button>
+        <button type="button" class="btn btn-reset" id="btn-reset">Redefinir</button>
+    </div>
+
+    <div class="clock" id="clock">
+        <!-- Horas -->
+        <div class="unit-group">
+            <div class="flip-card" id="h1">
+                <div class="top"><span>0</span></div>
+                <div class="bottom"><span>0</span></div>
+            </div>
+            <div class="flip-card" id="h2">
+                <div class="top"><span>0</span></div>
+                <div class="bottom"><span>0</span></div>
+            </div>
+            <span class="label">Horas</span>
+        </div>
+
+        <div class="separator">
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+
+        <!-- Minutos -->
+        <div class="unit-group">
+            <div class="flip-card" id="m1">
+                <div class="top"><span>0</span></div>
+                <div class="bottom"><span>0</span></div>
+            </div>
+            <div class="flip-card" id="m2">
+                <div class="top"><span>0</span></div>
+                <div class="bottom"><span>0</span></div>
+            </div>
+            <span class="label">Minutos</span>
+        </div>
+
+        <div class="separator">
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+
+        <!-- Segundos -->
+        <div class="unit-group">
+            <div class="flip-card" id="s1">
+                <div class="top"><span>0</span></div>
+                <div class="bottom"><span>0</span></div>
+            </div>
+            <div class="flip-card" id="s2">
+                <div class="top"><span>0</span></div>
+                <div class="bottom"><span>0</span></div>
+            </div>
+            <span class="label">Segundos</span>
+        </div>
+    </div>
+
+<script>
+    const btnStart = document.getElementById('btn-start');
+    const btnReset = document.getElementById('btn-reset');
+    const controls = document.getElementById('controls');
+    const clock = document.getElementById('clock');
+
+    const inH = document.getElementById('in-h');
+    const inM = document.getElementById('in-m');
+    const inS = document.getElementById('in-s');
+
+    let totalSeconds = 0;
+    let timerInterval = null;
+    let isRunning = false;
+    let isPaused = false;
+
+    const cards = {
+        h1: document.getElementById('h1'),
+        h2: document.getElementById('h2'),
+        m1: document.getElementById('m1'),
+        m2: document.getElementById('m2'),
+        s1: document.getElementById('s1'),
+        s2: document.getElementById('s2')
+    };
+
+    // Validação de inputs
+    function clampInput(el) {
+        let val = parseInt(el.value) || 0;
+        const min = parseInt(el.min);
+        const max = parseInt(el.max);
+        if (val < min) val = min;
+        if (val > max) val = max;
+        el.value = val;
+    }
+
+    [inH, inM, inS].forEach(input => {
+        input.addEventListener('change', () => clampInput(input));
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') btnStart.click();
+        });
+    });
+
+    function flipCard(cardEl, newValue) {
+        const topSpan = cardEl.querySelector('.top span');
+        const bottomSpan = cardEl.querySelector('.bottom span');
+        const currentValue = topSpan.innerText;
+
+        if (currentValue === newValue) return;
+
+        // Cria folhas de animação
+        const leafTop = document.createElement('div');
+        leafTop.className = 'leaf-top';
+        leafTop.innerHTML = `<span>${currentValue}</span>`;
+
+        const leafBottom = document.createElement('div');
+        leafBottom.className = 'leaf-bottom';
+        leafBottom.innerHTML = `<span>${newValue}</span>`;
+
+        cardEl.appendChild(leafTop);
+        cardEl.appendChild(leafBottom);
+
+        // Atualiza o valor base
+        topSpan.innerText = newValue;
+
+        // Limpa após animação
+        setTimeout(() => {
+            bottomSpan.innerText = newValue;
+            if (leafTop.parentNode) leafTop.remove();
+            if (leafBottom.parentNode) leafBottom.remove();
+        }, 700);
+    }
+
+    function renderDisplay(animate = true) {
+        const h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+        const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+        const s = (totalSeconds % 60).toString().padStart(2, '0');
+
+        if (animate) {
+            flipCard(cards.h1, h[0]);
+            flipCard(cards.h2, h[1]);
+            flipCard(cards.m1, m[0]);
+            flipCard(cards.m2, m[1]);
+            flipCard(cards.s1, s[0]);
+            flipCard(cards.s2, s[1]);
+        } else {
+            const str = h + m + s;
+            Object.keys(cards).forEach((key, idx) => {
+                cards[key].querySelector('.top span').innerText = str[idx];
+                cards[key].querySelector('.bottom span').innerText = str[idx];
+            });
+        }
+    }
+
+    function setInputsDisabled(disabled) {
+        inH.disabled = disabled;
+        inM.disabled = disabled;
+        inS.disabled = disabled;
+    }
+
+    btnStart.addEventListener('click', () => {
+        // Pausar
+        if (isRunning) {
+            clearInterval(timerInterval);
+            isRunning = false;
+            isPaused = true;
+            btnStart.innerText = 'Retomar';
+            controls.classList.remove('running');
+            setInputsDisabled(false);
+            return;
+        }
+
+        // Novo início
+        if (!isPaused) {
+            totalSeconds = (parseInt(inH.value) || 0) * 3600 +
+                           (parseInt(inM.value) || 0) * 60 +
+                           (parseInt(inS.value) || 0);
+            if (totalSeconds <= 0) return;
+            renderDisplay(false);
+        }
+
+        isRunning = true;
+        isPaused = false;
+        btnStart.innerText = 'Pausar';
+        controls.classList.add('running');
+        clock.classList.remove('finished');
+        setInputsDisabled(true);
+
+        timerInterval = setInterval(() => {
+            totalSeconds--;
+            renderDisplay(true);
+
+            if (totalSeconds <= 0) {
+                clearInterval(timerInterval);
+                isRunning = false;
+                isPaused = false;
+                btnStart.innerText = 'Iniciar';
+                controls.classList.remove('running');
+                setInputsDisabled(false);
+                clock.classList.add('finished');
+            }
+        }, 1000);
+    });
+
+    btnReset.addEventListener('click', () => {
+        clearInterval(timerInterval);
+        isRunning = false;
+        isPaused = false;
+        totalSeconds = 0;
+        inH.value = 0;
+        inM.value = 0;
+        inS.value = 10;
+        btnStart.innerText = 'Iniciar';
+        controls.classList.remove('running');
+        clock.classList.remove('finished');
+        setInputsDisabled(false);
+        renderDisplay(false);
+    });
+
+    renderDisplay(false);
+</script>
+
+</body>
+</html>
